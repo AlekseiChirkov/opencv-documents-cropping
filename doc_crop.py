@@ -16,14 +16,18 @@ import settings
 class ImageManipulationService:
     @staticmethod
     def convert_pdf_to_jpeg(file: bytes):
-        images = convert_from_bytes(
+	"""Converting pdf from bytes to images"""
+        
+	images = convert_from_bytes(
             file.getvalue(),
         )
         return images
 
     @staticmethod
     def save_temp_images(images: list):
-        file_names = []
+	"""Creating temp files to read with cv2"""
+        
+	file_names = []
         for image in images:
             file_name = (
                     'services/checks/images/'
@@ -35,7 +39,9 @@ class ImageManipulationService:
 
     @classmethod
     def cut_object(cls, pages: list):
-        file_names = cls.save_temp_images(pages)
+        """Curopping checks"""
+
+	file_names = cls.save_temp_images(pages)
         for file_name in file_names:
             cropped_file_name = (
                     'services/checks/cropped/'
@@ -78,8 +84,11 @@ class AWSService:
     )
 
     @classmethod
-    def get_text_from_images_local(cls, files_path: list):
-        for file_path in files_path:
+    def get_text_from_local_images_and_crop(cls, files_path: list):
+        """Getting text from image (local files)
+	 and try to crop it with coordinates"""
+
+	for file_path in files_path:
             print(file_path)
             with open(file_path, 'rb') as image:
                 img = bytearray(image.read())
@@ -103,7 +112,9 @@ class AWSService:
 
     @classmethod
     def get_text_from_images_s3(cls, file_name):
-        response = cls.textract_client.detect_document_text(
+	"""Getting text from files in s3"""
+
+	response = cls.textract_client.detect_document_text(
             Document={
                 'S3Object': {
                     'Bucket': 'iink-web-prd',
@@ -118,6 +129,8 @@ class AWSService:
 
     @classmethod
     def detect_page(cls, page_text):
+	"""Detecting fron and back pages"""
+
         front_page_words = [
             'claim', 'policy', 'loss', 'insured', 'insurance', 'company'
         ]
