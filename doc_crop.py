@@ -36,11 +36,10 @@ class ImageManipulationService:
         return file_names
 
     @classmethod
-    def cut_obj(cls, pages: list):
-        import cv2
-        import numpy as np
+    def cut_images(cls, pages: list):
         file_names = cls.save_temp_images(pages)
         for file_name in file_names:
+            # temporary file destination
             cropped_file_name = (
                     'services/checks/cropped/'
                     + str(datetime.datetime.now()).replace(' ', '_') + '.jpg'
@@ -49,79 +48,64 @@ class ImageManipulationService:
             # load image
             img = cv2.imread(file_name)
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
             # Separate the background from the foreground
             bit = cv2.bitwise_not(gray)
+
             # Apply adaptive mean thresholding
-            amtImage = cv2.adaptiveThreshold(bit, 255,
-                                             cv2.ADAPTIVE_THRESH_MEAN_C,
-                                             cv2.THRESH_BINARY, 35, 15)
+            amt_image = cv2.adaptiveThreshold(
+                bit, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 35, 15
+            )
+
             # Apply erosion to fill the gaps
             kernel = np.ones((15, 15), np.uint8)
-            erosion = cv2.erode(amtImage, kernel, iterations=2)
+            erosion = cv2.erode(amt_image, kernel, iterations=2)
+
             # Take the height and width of the image
             (height, width) = img.shape[0:2]
-            # Ignore the limits/extremities of the document (sometimes are black, so they distract the algorithm)
+
+            # Ignore the limits/extremities of the document
+            # (sometimes are black, so they distract the algorithm)
             image = erosion[50:height - 50, 50: width - 50]
             (nheight, nwidth) = image.shape[0:2]
-            # Create a list to save the indexes of lines containing more than 20% of black.
+
+            # Create a list to save the indexes of lines
+            # containing more than 20% of black.
             index = []
             for x in range(0, nheight):
                 line = []
 
                 for y in range(0, nwidth):
-                    line2 = []
-                    if (image[x, y] < 150):
+                    if image[x, y] < 150:
                         line.append(image[x, y])
-                if (len(line) / nwidth > 0.2):
+
+                if len(line) / nwidth > 0.15:
                     index.append(x)
-            # Create a list to save the indexes of columns containing more than 15% of black.
+
+            # Create a list to save the indexes
+            # of columns containing more than 15% of black.
             index2 = []
             for a in range(0, nwidth):
                 line2 = []
+
                 for b in range(0, nheight):
                     if image[b, a] < 150:
                         line2.append(image[b, a])
-                if (len(line2) / nheight > 0.15):
+
+                if len(line2) / nheight > 0.1:
                     index2.append(a)
 
-            # Crop the original image according to the max and min of black lines and columns.
-            img = img[min(index):max(index) + min(250, (
-                    height - max(index)) * 10 // 11),
+            # Crop the original image according to
+            # the max and min of black lines and columns.
+            img = img[
+                  min(index):max(index) + min(250, (
+                          height - max(index)) * 10 // 11),
                   max(0, min(index2)): max(index2) + min(250, (
-                          width - max(index2)) * 10 // 11)]
+                          width - max(index2)) * 10 // 11)
+                  ]
+
             # Save the image
             cv2.imwrite(cropped_file_name, img)
-
-    # @classmethod
-    # def cut_object(cls, pages: list):
-    #     """Curopping checks"""
-    #
-    #     file_names = cls.save_temp_images(pages)
-    #     for file_name in file_names:
-    #         cropped_file_name = (
-    #                 'services/checks/cropped/'
-    #                 + str(datetime.datetime.now()).replace(' ', '_') + '.jpg'
-    #         )
-    #         # (1) Make image gray
-    #         img = cv2.imread(file_name)
-    #         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #         th, threshed = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
-    #
-    #         # (2) Morph-op to remove noise
-    #         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
-    #         morphed = cv2.morphologyEx(threshed, cv2.MORPH_CLOSE, kernel)
-    #
-    #         # (3) Find the max-area contour
-    #         contours = cv2.findContours(
-    #             morphed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    #         )[-2]
-    #         contour = sorted(contours, key=cv2.contourArea)[-1]
-    #
-    #         # (4) Crop and save it
-    #         x, y, w, h = cv2.boundingRect(contour)
-    #         destination = img[y:y + h, x:x + w]
-    #         cv2.imwrite(cropped_file_name, destination)
-    #         os.remove(file_name)
 
 
 class AWSService:
